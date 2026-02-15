@@ -55,11 +55,11 @@ export function useSyncAction() {
   const [syncResult, setSyncResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const sync = useCallback(async (type: 'all' | 'organizations' | 'farms' | 'fields' | 'boundaries' | 'equipment' | 'aemp' | 'fieldOperations' | 'products' | 'operators' | 'flags' | 'locationHistory' | 'breadcrumbs') => {
+  const sync = useCallback(async (type: 'all' | 'organizations' | 'farms' | 'fields' | 'boundaries' | 'equipment' | 'aemp' | 'fieldOperations' | 'products' | 'operators' | 'flags' | 'locationHistory' | 'breadcrumbs' | 'measurements' | 'alerts' | 'deviceStates' | 'engineHours' | 'operationalHours' | 'implements') => {
     try {
       setSyncing(true);
       setError(null);
-      const result = await jdSync[type]();
+      const result = await jdSync[type as keyof typeof jdSync]();
       setSyncResult(result);
       return result;
     } catch (err) {

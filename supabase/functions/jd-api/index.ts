@@ -12,7 +12,7 @@ const JD_API_BASE = "https://sandboxapi.deere.com/platform";
 const JD_EQUIPMENT_API_BASE = "https://equipmentapi.deere.com/isg";
 const JD_AEMP_BASE = "https://sandboxaemp.deere.com";
 const JD_CLIENT_ID = "0oaspkya0q35SA0H25d7";
-const JD_CLIENT_SECRET = Deno.env.get("JD_CLIENT_SECRET") || "";
+const JD_CLIENT_SECRET = Deno.env.get("JD_CLIENT_SECRET") || Deno.env.get("john_deere") || "";
 const JD_TOKEN_URL =
   "https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7/v1/token";
 
@@ -558,8 +558,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/location-history" || path === "/sync/location-history/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -600,8 +599,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/breadcrumbs" || path === "/sync/breadcrumbs/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -647,8 +645,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/measurements" || path === "/sync/measurements/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -665,15 +662,32 @@ Deno.serve(async (req: Request) => {
 
         for (const measurement of measurements) {
           const timestamp = measurement.timestamp || measurement.measurementAsOf;
+          const mType = String(measurement.measurementType || measurement.type || "").toLowerCase();
+          const mValue = Number(measurement.value || 0);
+
           await supabase.from("machine_measurements").insert({
             equipment_id: eq.id,
-            measurement_type: String(measurement.measurementType || measurement.type || ""),
-            value: Number(measurement.value || 0),
+            measurement_type: mType || "unknown",
+            value: mValue,
             unit: String(measurement.unit || ""),
             timestamp: timestamp || new Date().toISOString(),
             metadata: measurement,
           });
           totalSynced++;
+
+          if (mType.includes("fuel") && (mType.includes("level") || mType.includes("remaining"))) {
+            const fuelRatio = mValue > 1 ? mValue / 100 : mValue;
+            await supabase.from("equipment").update({
+              fuel_remaining_ratio: Math.min(1, Math.max(0, fuelRatio)),
+              last_telemetry_sync: new Date().toISOString(),
+            }).eq("id", eq.id);
+          } else if (mType.includes("engine") && mType.includes("hour")) {
+            await supabase.from("equipment").update({
+              engine_hours: mValue,
+              cumulative_operating_hours: mValue,
+              last_telemetry_sync: new Date().toISOString(),
+            }).eq("id", eq.id);
+          }
         }
       }
 
@@ -686,8 +700,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/alerts" || path === "/sync/alerts/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
 
@@ -726,8 +739,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/device-states" || path === "/sync/device-states/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
 
@@ -762,8 +774,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/engine-hours" || path === "/sync/engine-hours/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -799,8 +810,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/operational-hours" || path === "/sync/operational-hours/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id")
-        .not("last_location_lat", "is", null);
+        .select("id");
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -851,19 +861,22 @@ Deno.serve(async (req: Request) => {
         const implementList = (data as { values: Record<string, unknown>[] }).values;
 
         for (const implement of implementList) {
-          await supabase.from("implements").upsert({
-            org_id: org.id,
-            implement_id: String(implement.id),
-            name: String(implement.name || implement.title || ""),
-            make: String(implement.make || ""),
-            model: String(implement.model || ""),
-            serial_number: String(implement.serialNumber || ""),
-            implement_type: String(implement.type || implement.category || ""),
-            width: Number(implement.width || 0),
-            width_unit: String(implement.widthUnit || ""),
-            metadata: implement,
-            updated_at: new Date().toISOString(),
-          });
+          await supabase.from("implements").upsert(
+            {
+              org_id: org.id,
+              implement_id: String(implement.id),
+              name: String(implement.name || implement.title || ""),
+              make: String(implement.make || ""),
+              model: String(implement.model || ""),
+              serial_number: String(implement.serialNumber || ""),
+              implement_type: String(implement.type || implement.category || ""),
+              width: Number(implement.width || 0),
+              width_unit: String(implement.widthUnit || ""),
+              metadata: implement,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "implement_id" }
+          );
           totalSynced++;
         }
       }
@@ -876,7 +889,7 @@ Deno.serve(async (req: Request) => {
 
     if (path === "/sync/all" || path === "/sync/all/") {
       const supabase = getSupabase();
-      const baseUrl = `${supabaseUrl}/functions/v1/jd-api`;
+      const baseUrl = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/jd-api`;
 
       await supabase.from("sync_log").insert({
         sync_type: "full",
@@ -907,14 +920,12 @@ Deno.serve(async (req: Request) => {
       ];
 
       for (const syncType of syncOrder) {
-        const endpoint = `${JD_API_BASE}${syncType === "organizations" ? "/organizations" : ""}`;
-        const innerUrl = new URL(req.url);
-        innerUrl.pathname = `/jd-api/sync/${syncType}`;
-
-        const res = await fetch(innerUrl.toString(), {
+        const syncUrl = `${baseUrl}/sync/${syncType}`;
+        const res = await fetch(syncUrl, {
           headers: {
             Authorization: req.headers.get("Authorization") || "",
             Apikey: req.headers.get("Apikey") || "",
+            "Content-Type": "application/json",
           },
         });
 

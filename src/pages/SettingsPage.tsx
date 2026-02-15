@@ -127,6 +127,12 @@ export default function SettingsPage() {
         | 'flags'
         | 'locationHistory'
         | 'breadcrumbs'
+        | 'measurements'
+        | 'alerts'
+        | 'deviceStates'
+        | 'engineHours'
+        | 'operationalHours'
+        | 'implements'
     ) => {
       const result = await sync(type);
       if (result) {
@@ -409,13 +415,18 @@ export default function SettingsPage() {
                 <Database className="w-4 h-4 text-green-600" />
                 Equipment Telemetry Sync
               </h2>
-              <p className="text-xs text-green-600 mt-1">Real-time data for engine hours, fuel levels, and equipment status</p>
+              <p className="text-xs text-green-600 mt-1">Engine hours, fuel levels, measurements, alerts, and equipment status</p>
             </div>
             <div className="p-5">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {(
                   [
                     'aemp',
+                    'measurements',
+                    'engineHours',
+                    'operationalHours',
+                    'alerts',
+                    'deviceStates',
                   ] as const
                 ).map((type) => (
                   <button
@@ -441,9 +452,9 @@ export default function SettingsPage() {
             <div className="px-5 py-4 border-b border-stone-100">
               <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-2">
                 <Database className="w-4 h-4 text-stone-400" />
-                Location & History Sync
+                Location, History & Implements
               </h2>
-              <p className="text-xs text-stone-400 mt-1">GPS tracking and historical data</p>
+              <p className="text-xs text-stone-400 mt-1">GPS tracking, breadcrumbs, and implement attachments</p>
             </div>
             <div className="p-5">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -451,6 +462,7 @@ export default function SettingsPage() {
                   [
                     'locationHistory',
                     'breadcrumbs',
+                    'implements',
                   ] as const
                 ).map((type) => (
                   <button
