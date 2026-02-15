@@ -635,6 +635,236 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (path === "/sync/measurements" || path === "/sync/measurements/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
+      const endDate = new Date();
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/measurements?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const measurements = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const measurement of measurements) {
+          const timestamp = measurement.timestamp || measurement.measurementAsOf;
+          await supabase.from("machine_measurements").insert({
+            equipment_id: eq.id,
+            measurement_type: String(measurement.measurementType || measurement.type || ""),
+            value: Number(measurement.value || 0),
+            unit: String(measurement.unit || ""),
+            timestamp: timestamp || new Date().toISOString(),
+            metadata: measurement,
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "measurements" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (path === "/sync/alerts" || path === "/sync/alerts/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/alerts`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const alerts = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const alert of alerts) {
+          await supabase.from("machine_alerts").upsert({
+            equipment_id: eq.id,
+            alert_id: String(alert.id || ""),
+            alert_type: String(alert.alertType || alert.type || ""),
+            severity: String(alert.severity || ""),
+            description: String(alert.description || alert.message || ""),
+            dtc_code: String(alert.dtcCode || alert.code || ""),
+            active: Boolean(alert.active ?? true),
+            started_at: alert.startTime || alert.createdAt || null,
+            ended_at: alert.endTime || alert.resolvedAt || null,
+            metadata: alert,
+            updated_at: new Date().toISOString(),
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "alerts" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (path === "/sync/device-states" || path === "/sync/device-states/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/deviceStateReports`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const deviceStates = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const state of deviceStates) {
+          await supabase.from("machine_device_states").insert({
+            equipment_id: eq.id,
+            device_id: String(state.deviceId || state.terminalId || ""),
+            state: String(state.state || state.status || ""),
+            signal_strength: Number(state.signalStrength || 0),
+            battery_voltage: Number(state.batteryVoltage || 0),
+            last_contact: state.lastContact || state.timestamp || null,
+            metadata: state,
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "device_states" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (path === "/sync/engine-hours" || path === "/sync/engine-hours/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      const endDate = new Date();
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/engineHours?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const engineHours = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const hours of engineHours) {
+          const timestamp = hours.timestamp || hours.measurementAsOf;
+          await supabase.from("machine_engine_hours").insert({
+            equipment_id: eq.id,
+            engine_hours: Number(hours.engineHours || hours.value || 0),
+            timestamp: timestamp || new Date().toISOString(),
+            metadata: hours,
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "engine_hours" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (path === "/sync/operational-hours" || path === "/sync/operational-hours/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      const endDate = new Date();
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/hoursOfOperation?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const operationalHours = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const period of operationalHours) {
+          const duration = period.durationHours ||
+            (period.startTime && period.endTime
+              ? (new Date(String(period.endTime)).getTime() - new Date(String(period.startTime)).getTime()) / (1000 * 60 * 60)
+              : 0);
+
+          await supabase.from("machine_operational_hours").insert({
+            equipment_id: eq.id,
+            start_time: period.startTime || new Date().toISOString(),
+            end_time: period.endTime || null,
+            duration_hours: Number(duration),
+            metadata: period,
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "operational_hours" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (path === "/sync/implements" || path === "/sync/implements/") {
+      const { data: orgs } = await supabase.from("organizations").select("id");
+      let totalSynced = 0;
+
+      for (const org of orgs || []) {
+        const endpoint = `/organizations/${org.id}/implements`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const implementList = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const implement of implementList) {
+          await supabase.from("implements").upsert({
+            org_id: org.id,
+            implement_id: String(implement.id),
+            name: String(implement.name || implement.title || ""),
+            make: String(implement.make || ""),
+            model: String(implement.model || ""),
+            serial_number: String(implement.serialNumber || ""),
+            implement_type: String(implement.type || implement.category || ""),
+            width: Number(implement.width || 0),
+            width_unit: String(implement.widthUnit || ""),
+            metadata: implement,
+            updated_at: new Date().toISOString(),
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "implements" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (path === "/sync/all" || path === "/sync/all/") {
       const supabase = getSupabase();
       const baseUrl = `${supabaseUrl}/functions/v1/jd-api`;
@@ -653,10 +883,18 @@ Deno.serve(async (req: Request) => {
         "boundaries",
         "equipment",
         "aemp",
+        "location-history",
+        "breadcrumbs",
         "field-operations",
         "products",
         "operators",
         "flags",
+        "implements",
+        "measurements",
+        "alerts",
+        "device-states",
+        "engine-hours",
+        "operational-hours",
       ];
 
       for (const syncType of syncOrder) {
@@ -719,6 +957,13 @@ Deno.serve(async (req: Request) => {
         "operators",
         "flags",
         "sync_log",
+        "machine_alerts",
+        "machine_measurements",
+        "machine_device_states",
+        "machine_engine_hours",
+        "machine_operational_hours",
+        "implements",
+        "equipment_implement_attachments",
       ];
 
       if (!validTables.includes(dataType)) {

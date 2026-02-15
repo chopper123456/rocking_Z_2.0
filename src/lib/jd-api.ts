@@ -42,6 +42,12 @@ export const jdSync = {
   flags: () => fetchJSON(`${apiBase}/sync/flags`),
   locationHistory: () => fetchJSON(`${apiBase}/sync/location-history`),
   breadcrumbs: () => fetchJSON(`${apiBase}/sync/breadcrumbs`),
+  measurements: () => fetchJSON(`${apiBase}/sync/measurements`),
+  alerts: () => fetchJSON(`${apiBase}/sync/alerts`),
+  deviceStates: () => fetchJSON(`${apiBase}/sync/device-states`),
+  engineHours: () => fetchJSON(`${apiBase}/sync/engine-hours`),
+  operationalHours: () => fetchJSON(`${apiBase}/sync/operational-hours`),
+  implements: () => fetchJSON(`${apiBase}/sync/implements`),
   all: () => fetchJSON(`${apiBase}/sync/all`),
 };
 
@@ -56,6 +62,13 @@ export const jdData = {
   operators: () => fetchJSON(`${apiBase}/data/operators`),
   flags: () => fetchJSON(`${apiBase}/data/flags`),
   syncLog: () => fetchJSON(`${apiBase}/data/sync_log`),
+  machineAlerts: () => fetchJSON(`${apiBase}/data/machine_alerts`),
+  machineMeasurements: () => fetchJSON(`${apiBase}/data/machine_measurements`),
+  machineDeviceStates: () => fetchJSON(`${apiBase}/data/machine_device_states`),
+  machineEngineHours: () => fetchJSON(`${apiBase}/data/machine_engine_hours`),
+  machineOperationalHours: () => fetchJSON(`${apiBase}/data/machine_operational_hours`),
+  implements: () => fetchJSON(`${apiBase}/data/implements`),
+  equipmentImplementAttachments: () => fetchJSON(`${apiBase}/data/equipment_implement_attachments`),
 };
 
 export const jdProxy = {

@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Users,
   Flag,
+  AlertTriangle,
 } from 'lucide-react';
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { path: '/map', label: 'Map View', icon: Map },
   { path: '/fields', label: 'Fields', icon: Wheat },
   { path: '/equipment', label: 'Equipment', icon: Tractor },
+  { path: '/alerts', label: 'Alerts', icon: AlertTriangle },
   { path: '/operations', label: 'Operations', icon: ClipboardList },
   { path: '/products', label: 'Products', icon: Package },
   { path: '/operators', label: 'Operators', icon: Users },

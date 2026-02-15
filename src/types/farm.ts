@@ -115,6 +115,89 @@ export interface SyncLogEntry {
   completed_at: string | null;
 }
 
+export interface MachineAlert {
+  id: string;
+  equipment_id: string;
+  alert_id: string;
+  alert_type: string;
+  severity: string;
+  description: string;
+  dtc_code: string;
+  active: boolean;
+  started_at: string | null;
+  ended_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MachineMeasurement {
+  id: string;
+  equipment_id: string;
+  measurement_type: string;
+  value: number;
+  unit: string;
+  timestamp: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface MachineDeviceState {
+  id: string;
+  equipment_id: string;
+  device_id: string;
+  state: string;
+  signal_strength: number;
+  battery_voltage: number;
+  last_contact: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface MachineEngineHours {
+  id: string;
+  equipment_id: string;
+  engine_hours: number;
+  timestamp: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface MachineOperationalHours {
+  id: string;
+  equipment_id: string;
+  start_time: string;
+  end_time: string | null;
+  duration_hours: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface Implement {
+  id: string;
+  org_id: string;
+  implement_id: string;
+  name: string;
+  make: string;
+  model: string;
+  serial_number: string;
+  implement_type: string;
+  width: number;
+  width_unit: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EquipmentImplementAttachment {
+  id: string;
+  equipment_id: string;
+  implement_id: string;
+  attached_at: string;
+  detached_at: string | null;
+  created_at: string;
+}
+
 export interface ConnectionStatus {
   connected: boolean;
   isExpired?: boolean;

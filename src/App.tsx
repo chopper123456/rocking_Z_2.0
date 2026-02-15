@@ -8,6 +8,7 @@ import Operations from './pages/Operations';
 import ProductsPage from './pages/Products';
 import Operators from './pages/Operators';
 import Flags from './pages/Flags';
+import Alerts from './pages/Alerts';
 import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/operators" element={<Operators />} />
           <Route path="/flags" element={<Flags />} />
+          <Route path="/alerts" element={<Alerts />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>
