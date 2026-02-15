@@ -546,6 +546,95 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (path === "/sync/location-history" || path === "/sync/location-history/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
+      const endDate = new Date();
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/locationHistory?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const locations = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const loc of locations) {
+          const timestamp = loc.timestamp || loc.measurementAsOf;
+          const geometry = loc.geometry as Record<string, unknown> | undefined;
+          const coords = geometry?.coordinates as number[] | undefined;
+
+          await supabase.from("equipment_location_history").insert({
+            equipment_id: eq.id,
+            timestamp: timestamp || new Date().toISOString(),
+            latitude: coords?.[1] || 0,
+            longitude: coords?.[0] || 0,
+            altitude: Number(loc.altitude || 0),
+            raw_data: loc,
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "location_history" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (path === "/sync/breadcrumbs" || path === "/sync/breadcrumbs/") {
+      const { data: equipment } = await supabase
+        .from("equipment")
+        .select("id")
+        .not("last_location_lat", "is", null);
+
+      let totalSynced = 0;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
+      const endDate = new Date();
+
+      for (const eq of equipment || []) {
+        const endpoint = `/machines/${eq.id}/breadcrumbs?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
+        const data = await jdFetchAllPages(endpoint, accessToken);
+
+        if (data.error) continue;
+
+        const breadcrumbs = (data as { values: Record<string, unknown>[] }).values;
+
+        for (const crumb of breadcrumbs) {
+          const timestamp = crumb.timestamp || crumb.measurementAsOf;
+          const geometry = crumb.geometry as Record<string, unknown> | undefined;
+          const coords = geometry?.coordinates as number[] | undefined;
+
+          await supabase.from("equipment_breadcrumbs").insert({
+            equipment_id: eq.id,
+            timestamp: timestamp || new Date().toISOString(),
+            latitude: coords?.[1] || 0,
+            longitude: coords?.[0] || 0,
+            altitude: Number(crumb.altitude || 0),
+            speed: Number(crumb.speed || 0),
+            heading: Number(crumb.heading || 0),
+            fuel_level: Number(crumb.fuelLevel || 0),
+            machine_state: String(crumb.machineState || ""),
+            correlation_id: String(crumb.correlationId || ""),
+            raw_data: crumb,
+          });
+          totalSynced++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "breadcrumbs" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (path === "/sync/all" || path === "/sync/all/") {
       const supabase = getSupabase();
       const baseUrl = `${supabaseUrl}/functions/v1/jd-api`;

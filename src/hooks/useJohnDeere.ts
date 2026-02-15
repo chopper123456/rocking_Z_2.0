@@ -55,7 +55,7 @@ export function useSyncAction() {
   const [syncResult, setSyncResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const sync = useCallback(async (type: 'all' | 'organizations' | 'farms' | 'fields' | 'boundaries' | 'equipment' | 'aemp' | 'fieldOperations' | 'products' | 'operators' | 'flags') => {
+  const sync = useCallback(async (type: 'all' | 'organizations' | 'farms' | 'fields' | 'boundaries' | 'equipment' | 'aemp' | 'fieldOperations' | 'products' | 'operators' | 'flags' | 'locationHistory' | 'breadcrumbs') => {
     try {
       setSyncing(true);
       setError(null);

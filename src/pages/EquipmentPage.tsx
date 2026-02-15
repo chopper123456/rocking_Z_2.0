@@ -19,6 +19,7 @@ export default function EquipmentPage() {
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [showOnlyWithLocation, setShowOnlyWithLocation] = useState(false);
 
   const equipment = useMemo(() => {
     const oneYearAgo = new Date();
@@ -55,9 +56,11 @@ export default function EquipmentPage() {
 
       const matchesType = typeFilter === 'all' || e.equipment_type?.toLowerCase() === typeFilter;
 
-      return matchesSearch && matchesType;
+      const matchesLocation = !showOnlyWithLocation || (e.last_location_lat !== 0 && e.last_location_lon !== 0);
+
+      return matchesSearch && matchesType && matchesLocation;
     });
-  }, [equipment, search, typeFilter]);
+  }, [equipment, search, typeFilter, showOnlyWithLocation]);
 
   if (loading) return <LoadingSpinner message="Loading equipment..." />;
 
@@ -100,6 +103,16 @@ export default function EquipmentPage() {
                 ))}
               </select>
             </div>
+            <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-stone-200 rounded-lg text-sm text-stone-700 hover:bg-stone-50 transition-all cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOnlyWithLocation}
+                onChange={(e) => setShowOnlyWithLocation(e.target.checked)}
+                className="w-4 h-4 text-green-600 border-stone-300 rounded focus:ring-2 focus:ring-green-500/20"
+              />
+              <MapPin className="w-4 h-4 text-stone-400" />
+              <span>Has Location</span>
+            </label>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -125,6 +125,8 @@ export default function SettingsPage() {
         | 'products'
         | 'operators'
         | 'flags'
+        | 'locationHistory'
+        | 'breadcrumbs'
     ) => {
       const result = await sync(type);
       if (result) {
@@ -369,6 +371,8 @@ export default function SettingsPage() {
                   'products',
                   'operators',
                   'flags',
+                  'locationHistory',
+                  'breadcrumbs',
                 ] as const
               ).map((type) => (
                 <button

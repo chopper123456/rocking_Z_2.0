@@ -40,6 +40,8 @@ export const jdSync = {
   products: () => fetchJSON(`${apiBase}/sync/products`),
   operators: () => fetchJSON(`${apiBase}/sync/operators`),
   flags: () => fetchJSON(`${apiBase}/sync/flags`),
+  locationHistory: () => fetchJSON(`${apiBase}/sync/location-history`),
+  breadcrumbs: () => fetchJSON(`${apiBase}/sync/breadcrumbs`),
   all: () => fetchJSON(`${apiBase}/sync/all`),
 };
 
