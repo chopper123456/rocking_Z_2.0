@@ -38,12 +38,25 @@ export interface Boundary {
 
 export interface Equipment {
   id: string;
+  org_id?: string;
   name: string;
   make: string;
   model: string;
   equipment_type: string;
   serial_number: string;
   engine_hours: number;
+  last_location_lat: number;
+  last_location_lon: number;
+  last_location_time: string | null;
+  cumulative_operating_hours: number;
+  cumulative_idle_hours: number;
+  cumulative_fuel_used: number;
+  fuel_remaining_ratio: number;
+  def_remaining_ratio: number;
+  cumulative_distance: number;
+  telemetry_state: string;
+  last_telemetry_sync: string | null;
+  aemp_data: Record<string, unknown>;
   raw_data: Record<string, unknown>;
   synced_at: string;
 }

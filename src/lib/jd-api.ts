@@ -35,6 +35,7 @@ export const jdSync = {
   fields: () => fetchJSON(`${apiBase}/sync/fields`),
   boundaries: () => fetchJSON(`${apiBase}/sync/boundaries`),
   equipment: () => fetchJSON(`${apiBase}/sync/equipment`),
+  aemp: () => fetchJSON(`${apiBase}/sync/aemp`),
   fieldOperations: () => fetchJSON(`${apiBase}/sync/field-operations`),
   products: () => fetchJSON(`${apiBase}/sync/products`),
   operators: () => fetchJSON(`${apiBase}/sync/operators`),

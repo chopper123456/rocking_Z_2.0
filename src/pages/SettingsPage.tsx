@@ -120,6 +120,7 @@ export default function SettingsPage() {
         | 'fields'
         | 'boundaries'
         | 'equipment'
+        | 'aemp'
         | 'fieldOperations'
         | 'products'
         | 'operators'
@@ -363,6 +364,7 @@ export default function SettingsPage() {
                   'fields',
                   'boundaries',
                   'equipment',
+                  'aemp',
                   'fieldOperations',
                   'products',
                   'operators',

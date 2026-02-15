@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { Tractor, Search, Gauge, Hash, Wrench, Filter } from 'lucide-react';
+import { Tractor, Search, Gauge, Hash, Wrench, Filter, MapPin, Fuel, Clock } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import { useFarmData, jdData } from '../hooks/useJohnDeere';
@@ -15,10 +15,21 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function EquipmentPage() {
   const equipFetch = useCallback(() => jdData.equipment(), []);
-  const { data: equipment, loading } = useFarmData<Equipment>(equipFetch);
+  const { data: allEquipment, loading } = useFarmData<Equipment>(equipFetch);
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+
+  const equipment = useMemo(() => {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    return allEquipment.filter(e => {
+      if (!e.last_telemetry_sync) return false;
+      const syncDate = new Date(e.last_telemetry_sync);
+      return syncDate >= oneYearAgo;
+    });
+  }, [allEquipment]);
 
   const types = useMemo(() => {
     const set = new Set(equipment.map(e => e.equipment_type?.toLowerCase()).filter(Boolean));
@@ -110,10 +121,36 @@ export default function EquipmentPage() {
                       <span className="text-stone-500 font-mono text-xs">{eq.serial_number}</span>
                     </div>
                   )}
-                  {eq.engine_hours > 0 && (
+                  {(eq.cumulative_operating_hours || eq.engine_hours) > 0 && (
                     <div className="flex items-center gap-2 text-sm">
                       <Gauge className="w-3.5 h-3.5 text-stone-400" />
-                      <span className="text-stone-500">{eq.engine_hours.toLocaleString()} hrs</span>
+                      <span className="text-stone-500">
+                        {(eq.cumulative_operating_hours || eq.engine_hours).toLocaleString()} hrs
+                      </span>
+                    </div>
+                  )}
+                  {eq.fuel_remaining_ratio > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Fuel className="w-3.5 h-3.5 text-stone-400" />
+                      <span className="text-stone-500">
+                        {Math.round(eq.fuel_remaining_ratio * 100)}% fuel
+                      </span>
+                    </div>
+                  )}
+                  {eq.last_location_time && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="w-3.5 h-3.5 text-stone-400" />
+                      <span className="text-stone-500">
+                        {eq.last_location_lat.toFixed(4)}, {eq.last_location_lon.toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                  {eq.last_telemetry_sync && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="w-3.5 h-3.5 text-stone-400" />
+                      <span className="text-stone-500 text-xs">
+                        {new Date(eq.last_telemetry_sync).toLocaleDateString()}
+                      </span>
                     </div>
                   )}
                 </div>

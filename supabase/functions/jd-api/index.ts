@@ -10,6 +10,7 @@ const corsHeaders = {
 
 const JD_API_BASE = "https://sandboxapi.deere.com/platform";
 const JD_EQUIPMENT_API_BASE = "https://equipmentapi.deere.com/isg";
+const JD_AEMP_BASE = "https://sandboxaemp.deere.com";
 const JD_CLIENT_ID = "0oaspkya0q35SA0H25d7";
 const JD_CLIENT_SECRET = Deno.env.get("JD_CLIENT_SECRET") || "";
 const JD_TOKEN_URL =
@@ -121,6 +122,77 @@ async function jdFetchAllPages(endpoint: string, accessToken: string) {
   }
 
   return { values: allValues, total: allValues.length };
+}
+
+function parseXMLValue(xmlText: string, tagName: string): string {
+  const regex = new RegExp(`<${tagName}[^>]*>([^<]*)<\/${tagName}>`, "i");
+  const match = xmlText.match(regex);
+  return match ? match[1].trim() : "";
+}
+
+function parseXMLArray(xmlText: string, tagName: string): string[] {
+  const regex = new RegExp(`<${tagName}[^>]*>([^<]*)<\/${tagName}>`, "gi");
+  const matches = xmlText.matchAll(regex);
+  return Array.from(matches).map((m) => m[1].trim());
+}
+
+async function fetchAEMPFleet(accessToken: string) {
+  const allEquipment: Record<string, unknown>[] = [];
+  let pageNumber = 1;
+  let hasMorePages = true;
+
+  while (hasMorePages) {
+    const res = await fetch(`${JD_AEMP_BASE}/Fleet/${pageNumber}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/xml",
+      },
+    });
+
+    if (!res.ok) {
+      return { error: true, status: res.status, message: await res.text() };
+    }
+
+    const xmlText = await res.text();
+
+    const equipmentRegex = /<Equipment>([\s\S]*?)<\/Equipment>/gi;
+    const equipmentMatches = xmlText.matchAll(equipmentRegex);
+
+    for (const match of equipmentMatches) {
+      const equipmentXml = match[1];
+
+      const equipment: Record<string, unknown> = {
+        id: parseXMLValue(equipmentXml, "EquipmentID"),
+        make: parseXMLValue(equipmentXml, "Make"),
+        model: parseXMLValue(equipmentXml, "Model"),
+        serialNumber: parseXMLValue(equipmentXml, "SerialNumber"),
+
+        lastLocationLat: parseFloat(parseXMLValue(equipmentXml, "Latitude")) || 0,
+        lastLocationLon: parseFloat(parseXMLValue(equipmentXml, "Longitude")) || 0,
+        lastLocationTime: parseXMLValue(equipmentXml, "DateTime"),
+
+        cumulativeOperatingHours: parseFloat(parseXMLValue(equipmentXml, "CumulativeOperatingHours")) || 0,
+        cumulativeIdleHours: parseFloat(parseXMLValue(equipmentXml, "CumulativeIdleHours")) || 0,
+        cumulativeFuelUsed: parseFloat(parseXMLValue(equipmentXml, "CumulativeFuelUsed")) || 0,
+        fuelRemainingRatio: parseFloat(parseXMLValue(equipmentXml, "FuelRemaining")) || 0,
+        defRemainingRatio: parseFloat(parseXMLValue(equipmentXml, "DEFRemaining")) || 0,
+        cumulativeDistance: parseFloat(parseXMLValue(equipmentXml, "Distance")) || 0,
+
+        rawXml: match[0],
+      };
+
+      allEquipment.push(equipment);
+    }
+
+    const nextLinks = parseXMLArray(xmlText, "href").filter((href) =>
+      href.includes("/Fleet/") && parseInt(href.split("/Fleet/")[1]) > pageNumber
+    );
+
+    hasMorePages = nextLinks.length > 0;
+    pageNumber++;
+  }
+
+  return { equipment: allEquipment, total: allEquipment.length };
 }
 
 Deno.serve(async (req: Request) => {
@@ -429,6 +501,51 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (path === "/sync/aemp" || path === "/sync/aemp/") {
+      const aempData = await fetchAEMPFleet(accessToken);
+
+      if (aempData.error) {
+        return new Response(JSON.stringify(aempData), {
+          status: (aempData as { status: number }).status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let totalSynced = 0;
+      const syncTime = new Date().toISOString();
+
+      for (const eq of (aempData as { equipment: Record<string, unknown>[] }).equipment) {
+        const equipmentId = String(eq.id);
+
+        await supabase.from("equipment").upsert({
+          id: equipmentId,
+          name: `${eq.make} ${eq.model}`.trim() || equipmentId,
+          make: String(eq.make || ""),
+          model: String(eq.model || ""),
+          serial_number: String(eq.serialNumber || ""),
+          last_location_lat: Number(eq.lastLocationLat || 0),
+          last_location_lon: Number(eq.lastLocationLon || 0),
+          last_location_time: eq.lastLocationTime || null,
+          cumulative_operating_hours: Number(eq.cumulativeOperatingHours || 0),
+          cumulative_idle_hours: Number(eq.cumulativeIdleHours || 0),
+          cumulative_fuel_used: Number(eq.cumulativeFuelUsed || 0),
+          fuel_remaining_ratio: Number(eq.fuelRemainingRatio || 0),
+          def_remaining_ratio: Number(eq.defRemainingRatio || 0),
+          cumulative_distance: Number(eq.cumulativeDistance || 0),
+          telemetry_state: "active",
+          last_telemetry_sync: syncTime,
+          aemp_data: eq,
+          synced_at: syncTime,
+        });
+        totalSynced++;
+      }
+
+      return new Response(
+        JSON.stringify({ synced: totalSynced, type: "aemp" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (path === "/sync/all" || path === "/sync/all/") {
       const supabase = getSupabase();
       const baseUrl = `${supabaseUrl}/functions/v1/jd-api`;
@@ -446,6 +563,7 @@ Deno.serve(async (req: Request) => {
         "fields",
         "boundaries",
         "equipment",
+        "aemp",
         "field-operations",
         "products",
         "operators",
