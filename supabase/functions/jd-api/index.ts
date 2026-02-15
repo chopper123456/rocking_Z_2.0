@@ -264,32 +264,60 @@ Deno.serve(async (req: Request) => {
     }
 
     if (path === "/sync/equipment" || path === "/sync/equipment/") {
-      const data = await jdFetchAllPages("/equipment", accessToken);
-      if (data.error) {
-        return new Response(JSON.stringify(data), {
-          status: (data as { status: number }).status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       let totalSynced = 0;
-      for (const eq of (data as { values: Record<string, unknown>[] }).values) {
-        await supabase.from("equipment").upsert({
-          id: String(eq.id),
-          name: String(eq.name || eq.title || ""),
-          make: String(eq.make || ""),
-          model: String(eq.model || ""),
-          equipment_type: String(eq.type || eq.equipmentType || ""),
-          serial_number: String(eq.serialNumber || ""),
-          engine_hours: Number(eq.engineHours || 0),
-          raw_data: eq,
-          synced_at: new Date().toISOString(),
-        });
-        totalSynced++;
+      const errors: string[] = [];
+
+      const rootData = await jdFetchAllPages("/equipment", accessToken);
+
+      if (!rootData.error && (rootData as { values: Record<string, unknown>[] }).values?.length > 0) {
+        for (const eq of (rootData as { values: Record<string, unknown>[] }).values) {
+          await supabase.from("equipment").upsert({
+            id: String(eq.id),
+            name: String(eq.name || eq.title || ""),
+            make: String(eq.make || ""),
+            model: String(eq.model || ""),
+            equipment_type: String(eq.type || eq.equipmentType || ""),
+            serial_number: String(eq.serialNumber || ""),
+            engine_hours: Number(eq.engineHours || 0),
+            raw_data: eq,
+            synced_at: new Date().toISOString(),
+          });
+          totalSynced++;
+        }
+      } else {
+        errors.push(`Root endpoint failed: ${(rootData as { message?: string }).message || "404"}`);
+
+        const { data: orgs } = await supabase.from("organizations").select("id");
+        for (const org of orgs || []) {
+          const orgData = await jdFetchAllPages(
+            `/organizations/${org.id}/machines`,
+            accessToken
+          );
+
+          if (!orgData.error && (orgData as { values: Record<string, unknown>[] }).values) {
+            for (const eq of (orgData as { values: Record<string, unknown>[] }).values) {
+              await supabase.from("equipment").upsert({
+                id: String(eq.id),
+                org_id: org.id,
+                name: String(eq.name || eq.title || ""),
+                make: String(eq.make || ""),
+                model: String(eq.model || ""),
+                equipment_type: String(eq.type || eq.equipmentType || ""),
+                serial_number: String(eq.serialNumber || ""),
+                engine_hours: Number(eq.engineHours || 0),
+                raw_data: eq,
+                synced_at: new Date().toISOString(),
+              });
+              totalSynced++;
+            }
+          } else {
+            errors.push(`Org ${org.id}: ${(orgData as { message?: string }).message || "error"}`);
+          }
+        }
       }
 
       return new Response(
-        JSON.stringify({ synced: totalSynced, type: "equipment" }),
+        JSON.stringify({ synced: totalSynced, type: "equipment", errors: errors.length > 0 ? errors : undefined }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
