@@ -1,5 +1,6 @@
 import { useCallback, useState, useMemo } from 'react';
-import { Tractor, Search, Gauge, Hash, Wrench, Filter, MapPin, Fuel, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Tractor, Search, Gauge, Hash, Wrench, Filter, MapPin, Fuel, Clock, ChevronRight } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import { useFarmData, jdData } from '../hooks/useJohnDeere';
@@ -117,9 +118,13 @@ export default function EquipmentPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((eq) => (
-              <div key={eq.id} className="bg-white rounded-xl border border-stone-200 p-5 hover:shadow-md transition-shadow">
+              <Link
+                key={eq.id}
+                to={`/equipment/${eq.id}`}
+                className="bg-white rounded-xl border border-stone-200 p-5 hover:shadow-lg hover:border-green-300 transition-all group"
+              >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="bg-sky-50 rounded-lg p-2.5">
+                  <div className="bg-sky-50 rounded-lg p-2.5 group-hover:bg-sky-100 transition-colors">
                     <Tractor className="w-5 h-5 text-sky-600" />
                   </div>
                   {eq.equipment_type && (
@@ -128,7 +133,12 @@ export default function EquipmentPage() {
                     </span>
                   )}
                 </div>
-                <h3 className="font-semibold text-stone-800 mb-3">{eq.name || 'Unnamed Equipment'}</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-stone-800 group-hover:text-green-700 transition-colors">
+                    {eq.name || 'Unnamed Equipment'}
+                  </h3>
+                  <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-green-600 transition-colors" />
+                </div>
                 <div className="space-y-2">
                   {eq.make && (
                     <div className="flex items-center gap-2 text-sm">
@@ -175,7 +185,7 @@ export default function EquipmentPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </>

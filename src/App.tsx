@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import MapView from './pages/MapView';
 import Fields from './pages/Fields';
 import EquipmentPage from './pages/EquipmentPage';
+import EquipmentDetail from './pages/EquipmentDetail';
 import Operations from './pages/Operations';
 import ProductsPage from './pages/Products';
 import Operators from './pages/Operators';
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/map" element={<MapView />} />
           <Route path="/fields" element={<Fields />} />
           <Route path="/equipment" element={<EquipmentPage />} />
+          <Route path="/equipment/:equipmentId" element={<EquipmentDetail />} />
           <Route path="/operations" element={<Operations />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/operators" element={<Operators />} />
