@@ -264,30 +264,28 @@ Deno.serve(async (req: Request) => {
     }
 
     if (path === "/sync/equipment" || path === "/sync/equipment/") {
-      const { data: orgs } = await supabase.from("organizations").select("id");
+      const data = await jdFetchAllPages("/equipment", accessToken);
+      if (data.error) {
+        return new Response(JSON.stringify(data), {
+          status: (data as { status: number }).status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       let totalSynced = 0;
-
-      for (const org of orgs || []) {
-        const data = await jdFetchAllPages(
-          `/organizations/${org.id}/machines`,
-          accessToken
-        );
-        if (data.error) continue;
-
-        for (const eq of (data as { values: Record<string, unknown>[] }).values) {
-          await supabase.from("equipment").upsert({
-            id: String(eq.id),
-            name: String(eq.name || eq.title || ""),
-            make: String(eq.make || ""),
-            model: String(eq.model || ""),
-            equipment_type: String(eq.type || eq.equipmentType || ""),
-            serial_number: String(eq.serialNumber || ""),
-            engine_hours: Number(eq.engineHours || 0),
-            raw_data: eq,
-            synced_at: new Date().toISOString(),
-          });
-          totalSynced++;
-        }
+      for (const eq of (data as { values: Record<string, unknown>[] }).values) {
+        await supabase.from("equipment").upsert({
+          id: String(eq.id),
+          name: String(eq.name || eq.title || ""),
+          make: String(eq.make || ""),
+          model: String(eq.model || ""),
+          equipment_type: String(eq.type || eq.equipmentType || ""),
+          serial_number: String(eq.serialNumber || ""),
+          engine_hours: Number(eq.engineHours || 0),
+          raw_data: eq,
+          synced_at: new Date().toISOString(),
+        });
+        totalSynced++;
       }
 
       return new Response(
