@@ -25,9 +25,17 @@ export default function EquipmentPage() {
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
     return allEquipment.filter(e => {
-      if (!e.last_telemetry_sync) return false;
-      const syncDate = new Date(e.last_telemetry_sync);
-      return syncDate >= oneYearAgo;
+      if (e.last_telemetry_sync) {
+        const syncDate = new Date(e.last_telemetry_sync);
+        return syncDate >= oneYearAgo;
+      }
+
+      if (e.synced_at) {
+        const syncDate = new Date(e.synced_at);
+        return syncDate >= oneYearAgo;
+      }
+
+      return true;
     });
   }, [allEquipment]);
 
