@@ -343,11 +343,20 @@ Deno.serve(async (req: Request) => {
 
       if (!rootData.error && (rootData as { values: Record<string, unknown>[] }).values?.length > 0) {
         for (const eq of (rootData as { values: Record<string, unknown>[] }).values) {
+          const extractString = (val: unknown): string => {
+            if (typeof val === 'string') return val;
+            if (val && typeof val === 'object') {
+              const obj = val as Record<string, unknown>;
+              return String(obj.value || obj.name || obj.title || '');
+            }
+            return '';
+          };
+
           await supabase.from("equipment").upsert({
             id: String(eq.id),
             name: String(eq.name || eq.title || ""),
-            make: String(eq.make || ""),
-            model: String(eq.model || ""),
+            make: extractString(eq.make),
+            model: extractString(eq.model),
             equipment_type: String(eq.type || eq.equipmentType || ""),
             serial_number: String(eq.serialNumber || ""),
             engine_hours: Number(eq.engineHours || 0),

@@ -345,51 +345,130 @@ export default function SettingsPage() {
       </div>
 
       {setupComplete && (
-        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-stone-100">
-            <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-2">
-              <Database className="w-4 h-4 text-stone-400" />
-              Individual Sync
-            </h2>
+        <div className="space-y-4">
+          <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
+            <h3 className="font-semibold text-sky-900 text-sm mb-2">Telemetry Data Required</h3>
+            <p className="text-sm text-sky-700 mb-3">
+              To see engine hours, fuel levels, and equipment status, you must sync AEMP telemetry data. Click the "AEMP" button below to pull real-time telemetry from your equipment.
+            </p>
+            <p className="text-xs text-sky-600">
+              After syncing AEMP, you can also sync engine hours, measurements, and alerts for detailed historical data.
+            </p>
           </div>
-          <div className="p-5">
-            {syncError && (
-              <div className="mb-4 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm text-rose-700">
-                {syncError}
+
+          <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-stone-100">
+              <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-2">
+                <Database className="w-4 h-4 text-stone-400" />
+                Farm Data Sync
+              </h2>
+              <p className="text-xs text-stone-400 mt-1">Organizations, farms, fields, and operations</p>
+            </div>
+            <div className="p-5">
+              {syncError && (
+                <div className="mb-4 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm text-rose-700">
+                  {syncError}
+                </div>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(
+                  [
+                    'organizations',
+                    'farms',
+                    'fields',
+                    'boundaries',
+                    'equipment',
+                    'fieldOperations',
+                    'products',
+                    'operators',
+                    'flags',
+                  ] as const
+                ).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => handleSync(type)}
+                    disabled={syncing}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-stone-200 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-50 disabled:opacity-50 transition-all capitalize"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                    {type.replace(/([A-Z])/g, ' $1').trim()}
+                    {syncResults[type] && (
+                      <span className="text-green-600 font-semibold">
+                        ({syncResults[type].synced})
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
-            )}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(
-                [
-                  'organizations',
-                  'farms',
-                  'fields',
-                  'boundaries',
-                  'equipment',
-                  'aemp',
-                  'fieldOperations',
-                  'products',
-                  'operators',
-                  'flags',
-                  'locationHistory',
-                  'breadcrumbs',
-                ] as const
-              ).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => handleSync(type)}
-                  disabled={syncing}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-stone-200 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-50 disabled:opacity-50 transition-all capitalize"
-                >
-                  <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
-                  {type.replace(/([A-Z])/g, ' $1').trim()}
-                  {syncResults[type] && (
-                    <span className="text-green-600 font-semibold">
-                      ({syncResults[type].synced})
-                    </span>
-                  )}
-                </button>
-              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-green-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-green-100 bg-green-50">
+              <h2 className="font-semibold text-green-800 text-sm flex items-center gap-2">
+                <Database className="w-4 h-4 text-green-600" />
+                Equipment Telemetry Sync
+              </h2>
+              <p className="text-xs text-green-600 mt-1">Real-time data for engine hours, fuel levels, and equipment status</p>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(
+                  [
+                    'aemp',
+                  ] as const
+                ).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => handleSync(type)}
+                    disabled={syncing}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all uppercase shadow-sm"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                    {type}
+                    {syncResults[type] && (
+                      <span className="font-semibold">
+                        ({syncResults[type].synced})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-stone-100">
+              <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-2">
+                <Database className="w-4 h-4 text-stone-400" />
+                Location & History Sync
+              </h2>
+              <p className="text-xs text-stone-400 mt-1">GPS tracking and historical data</p>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(
+                  [
+                    'locationHistory',
+                    'breadcrumbs',
+                  ] as const
+                ).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => handleSync(type)}
+                    disabled={syncing}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-stone-200 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-50 disabled:opacity-50 transition-all capitalize"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                    {type.replace(/([A-Z])/g, ' $1').trim()}
+                    {syncResults[type] && (
+                      <span className="text-green-600 font-semibold">
+                        ({syncResults[type].synced})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
