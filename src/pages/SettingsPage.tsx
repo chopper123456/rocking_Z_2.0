@@ -127,6 +127,12 @@ export default function SettingsPage() {
         | 'flags'
         | 'locationHistory'
         | 'breadcrumbs'
+        | 'measurements'
+        | 'alerts'
+        | 'deviceStates'
+        | 'engineHours'
+        | 'operationalHours'
+        | 'implements'
     ) => {
       const result = await sync(type);
       if (result) {

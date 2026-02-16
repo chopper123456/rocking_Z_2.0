@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { jdAuth, jdData, jdSync } from '../lib/jd-api';
 import type { ConnectionStatus } from '../types/farm';
 
@@ -55,7 +55,7 @@ export function useSyncAction() {
   const [syncResult, setSyncResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const sync = useCallback(async (type: 'all' | 'organizations' | 'farms' | 'fields' | 'boundaries' | 'equipment' | 'aemp' | 'fieldOperations' | 'products' | 'operators' | 'flags' | 'locationHistory' | 'breadcrumbs') => {
+  const sync = useCallback(async (type: 'all' | 'organizations' | 'farms' | 'fields' | 'boundaries' | 'equipment' | 'aemp' | 'fieldOperations' | 'products' | 'operators' | 'flags' | 'locationHistory' | 'breadcrumbs' | 'measurements' | 'alerts' | 'deviceStates' | 'engineHours' | 'operationalHours' | 'implements') => {
     try {
       setSyncing(true);
       setError(null);
@@ -71,6 +71,18 @@ export function useSyncAction() {
   }, []);
 
   return { sync, syncing, syncResult, error };
+}
+
+export function useAutoSync() {
+  const { status } = useConnectionStatus();
+  const { sync } = useSyncAction();
+  const hasSynced = useRef(false);
+
+  useEffect(() => {
+    if (!status.connected || status.isExpired || hasSynced.current) return;
+    hasSynced.current = true;
+    sync('all');
+  }, [status.connected, status.isExpired, sync]);
 }
 
 export { jdAuth, jdData, jdSync };
