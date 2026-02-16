@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAutoSync } from '../hooks/useJohnDeere';
 import {
   LayoutDashboard,
   Map,
@@ -15,7 +14,6 @@ import {
   Users,
   Flag,
   AlertTriangle,
-  Beaker,
 } from 'lucide-react';
 
 const navItems = [
@@ -25,7 +23,6 @@ const navItems = [
   { path: '/equipment', label: 'Equipment', icon: Tractor },
   { path: '/alerts', label: 'Alerts', icon: AlertTriangle },
   { path: '/operations', label: 'Operations', icon: ClipboardList },
-  { path: '/inventory', label: 'Chemical Inventory', icon: Beaker },
   { path: '/products', label: 'Products', icon: Package },
   { path: '/operators', label: 'Operators', icon: Users },
   { path: '/flags', label: 'Flags', icon: Flag },
@@ -35,7 +32,6 @@ const navItems = [
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  useAutoSync();
 
   return (
     <div className="min-h-screen bg-stone-50">

@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const JD_CLIENT_ID = "0oaspkya0q35SA0H25d7";
-const JD_CLIENT_SECRET = Deno.env.get("JD_CLIENT_SECRET") || Deno.env.get("john_deere") || "";
+const JD_CLIENT_SECRET = Deno.env.get("john_deere") || "";
 const JD_REDIRECT_URI =
   "https://ufvxhrvgwntzjdigdxqp.supabase.co/functions/v1/jd-auth/callback";
 const JD_AUTH_URL =

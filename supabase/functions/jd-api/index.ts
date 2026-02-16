@@ -12,7 +12,7 @@ const JD_API_BASE = "https://sandboxapi.deere.com/platform";
 const JD_EQUIPMENT_API_BASE = "https://equipmentapi.deere.com/isg";
 const JD_AEMP_BASE = "https://sandboxaemp.deere.com";
 const JD_CLIENT_ID = "0oaspkya0q35SA0H25d7";
-const JD_CLIENT_SECRET = Deno.env.get("JD_CLIENT_SECRET") || Deno.env.get("john_deere") || "";
+const JD_CLIENT_SECRET = Deno.env.get("JD_CLIENT_SECRET") || "";
 const JD_TOKEN_URL =
   "https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7/v1/token";
 
@@ -375,7 +375,7 @@ Deno.serve(async (req: Request) => {
 
     if (path === "/sync/field-operations" || path === "/sync/field-operations/") {
       const { data: orgs } = await supabase.from("organizations").select("id");
-      const { data: fields } = await supabase.from("fields").select("id, org_id, name");
+      const { data: fields } = await supabase.from("fields").select("id, org_id");
       let totalSynced = 0;
 
       for (const org of orgs || []) {
@@ -403,44 +403,6 @@ Deno.serve(async (req: Request) => {
               synced_at: new Date().toISOString(),
             });
             totalSynced++;
-          }
-        }
-      }
-
-      const { data: sprayOps } = await supabase
-        .from("field_operations")
-        .select("id, field_id, operation_type, products, start_date, raw_data")
-        .or("operation_type.ilike.%spray%,operation_type.ilike.%application%");
-
-      for (const op of sprayOps || []) {
-        const products = (op.products as Array<{ name?: string; id?: string; amount?: number }>) || [];
-        const field = (fields || []).find((f) => f.id === op.field_id);
-        for (const p of products) {
-          if (p.name) {
-            const appDate = op.start_date || new Date().toISOString();
-            const { data: existing } = await supabase
-              .from("spray_applications")
-              .select("id")
-              .eq("field_id", op.field_id || "")
-              .eq("product_name", p.name)
-              .eq("application_date", appDate)
-              .eq("source", "john_deere")
-              .maybeSingle();
-            if (!existing) {
-              await supabase.from("spray_applications").insert({
-                equipment_id: "",
-                equipment_name: "",
-                product_id: String(p.id || ""),
-                product_name: p.name,
-                amount_applied: Number(p.amount || 0),
-                unit: "gal",
-                field_id: op.field_id || "",
-                field_name: field?.name || "",
-                application_date: appDate,
-                source: "john_deere",
-                metadata: op.raw_data || {},
-              });
-            }
           }
         }
       }
@@ -596,7 +558,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/location-history" || path === "/sync/location-history/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -637,7 +600,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/breadcrumbs" || path === "/sync/breadcrumbs/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -683,7 +647,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/measurements" || path === "/sync/measurements/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -700,32 +665,15 @@ Deno.serve(async (req: Request) => {
 
         for (const measurement of measurements) {
           const timestamp = measurement.timestamp || measurement.measurementAsOf;
-          const mType = String(measurement.measurementType || measurement.type || "").toLowerCase();
-          const mValue = Number(measurement.value || 0);
-
           await supabase.from("machine_measurements").insert({
             equipment_id: eq.id,
-            measurement_type: mType || "unknown",
-            value: mValue,
+            measurement_type: String(measurement.measurementType || measurement.type || ""),
+            value: Number(measurement.value || 0),
             unit: String(measurement.unit || ""),
             timestamp: timestamp || new Date().toISOString(),
             metadata: measurement,
           });
           totalSynced++;
-
-          if (mType.includes("fuel") && (mType.includes("level") || mType.includes("remaining"))) {
-            const fuelRatio = mValue > 1 ? mValue / 100 : mValue;
-            await supabase.from("equipment").update({
-              fuel_remaining_ratio: Math.min(1, Math.max(0, fuelRatio)),
-              last_telemetry_sync: new Date().toISOString(),
-            }).eq("id", eq.id);
-          } else if (mType.includes("engine") && mType.includes("hour")) {
-            await supabase.from("equipment").update({
-              engine_hours: mValue,
-              cumulative_operating_hours: mValue,
-              last_telemetry_sync: new Date().toISOString(),
-            }).eq("id", eq.id);
-          }
         }
       }
 
@@ -738,7 +686,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/alerts" || path === "/sync/alerts/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
 
@@ -777,7 +726,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/device-states" || path === "/sync/device-states/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
 
@@ -812,7 +762,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/engine-hours" || path === "/sync/engine-hours/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -848,7 +799,8 @@ Deno.serve(async (req: Request) => {
     if (path === "/sync/operational-hours" || path === "/sync/operational-hours/") {
       const { data: equipment } = await supabase
         .from("equipment")
-        .select("id");
+        .select("id")
+        .not("last_location_lat", "is", null);
 
       let totalSynced = 0;
       const startDate = new Date();
@@ -899,22 +851,19 @@ Deno.serve(async (req: Request) => {
         const implementList = (data as { values: Record<string, unknown>[] }).values;
 
         for (const implement of implementList) {
-          await supabase.from("implements").upsert(
-            {
-              org_id: org.id,
-              implement_id: String(implement.id),
-              name: String(implement.name || implement.title || ""),
-              make: String(implement.make || ""),
-              model: String(implement.model || ""),
-              serial_number: String(implement.serialNumber || ""),
-              implement_type: String(implement.type || implement.category || ""),
-              width: Number(implement.width || 0),
-              width_unit: String(implement.widthUnit || ""),
-              metadata: implement,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "implement_id" }
-          );
+          await supabase.from("implements").upsert({
+            org_id: org.id,
+            implement_id: String(implement.id),
+            name: String(implement.name || implement.title || ""),
+            make: String(implement.make || ""),
+            model: String(implement.model || ""),
+            serial_number: String(implement.serialNumber || ""),
+            implement_type: String(implement.type || implement.category || ""),
+            width: Number(implement.width || 0),
+            width_unit: String(implement.widthUnit || ""),
+            metadata: implement,
+            updated_at: new Date().toISOString(),
+          });
           totalSynced++;
         }
       }
@@ -927,7 +876,7 @@ Deno.serve(async (req: Request) => {
 
     if (path === "/sync/all" || path === "/sync/all/") {
       const supabase = getSupabase();
-      const baseUrl = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/jd-api`;
+      const baseUrl = `${supabaseUrl}/functions/v1/jd-api`;
 
       await supabase.from("sync_log").insert({
         sync_type: "full",
@@ -958,12 +907,14 @@ Deno.serve(async (req: Request) => {
       ];
 
       for (const syncType of syncOrder) {
-        const syncUrl = `${baseUrl}/sync/${syncType}`;
-        const res = await fetch(syncUrl, {
+        const endpoint = `${JD_API_BASE}${syncType === "organizations" ? "/organizations" : ""}`;
+        const innerUrl = new URL(req.url);
+        innerUrl.pathname = `/jd-api/sync/${syncType}`;
+
+        const res = await fetch(innerUrl.toString(), {
           headers: {
             Authorization: req.headers.get("Authorization") || "",
             Apikey: req.headers.get("Apikey") || "",
-            "Content-Type": "application/json",
           },
         });
 
@@ -1002,7 +953,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (path.startsWith("/data/") && req.method === "GET") {
+    if (path.startsWith("/data/")) {
       const dataType = path.replace("/data/", "").replace("/", "");
       const validTables = [
         "organizations",
@@ -1022,8 +973,6 @@ Deno.serve(async (req: Request) => {
         "machine_operational_hours",
         "implements",
         "equipment_implement_attachments",
-        "chemical_inventory",
-        "spray_applications",
       ];
 
       if (!validTables.includes(dataType)) {
@@ -1033,17 +982,10 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const orderCol =
-        dataType === "chemical_inventory"
-          ? "last_updated"
-          : dataType === "spray_applications"
-            ? "application_date"
-            : "synced_at";
-
       const { data, error } = await supabase
         .from(dataType)
         .select("*")
-        .order(orderCol, { ascending: false });
+        .order("synced_at", { ascending: false });
 
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
@@ -1053,80 +995,6 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(JSON.stringify({ data, total: data?.length || 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (path === "/data/chemical_inventory" && req.method === "POST") {
-      const body = await req.json();
-      const { id, product_id, product_name, quantity, unit, low_stock_threshold } =
-        body;
-      const row = {
-        product_id: product_id || "",
-        product_name: product_name || "",
-        quantity: Number(quantity ?? 0),
-        unit: unit || "gal",
-        low_stock_threshold: Number(low_stock_threshold ?? 0),
-        last_updated: new Date().toISOString(),
-      };
-
-      if (id) {
-        await supabase.from("chemical_inventory").update(row).eq("id", id);
-      } else {
-        let existing = null;
-        if (product_id) {
-          const r = await supabase
-            .from("chemical_inventory")
-            .select("id")
-            .eq("product_id", product_id)
-            .maybeSingle();
-          existing = r.data;
-        }
-        if (!existing && product_name) {
-          const r = await supabase
-            .from("chemical_inventory")
-            .select("id")
-            .eq("product_name", product_name)
-            .maybeSingle();
-          existing = r.data;
-        }
-        if (existing && (existing as { id: string }).id) {
-          await supabase.from("chemical_inventory").update(row).eq("id", (existing as { id: string }).id);
-        } else {
-          await supabase.from("chemical_inventory").insert(row);
-        }
-      }
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (path === "/data/spray_applications" && req.method === "POST") {
-      const body = await req.json();
-      const {
-        equipment_id,
-        equipment_name,
-        product_id,
-        product_name,
-        amount_applied,
-        unit,
-        field_id,
-        field_name,
-        application_date,
-      } = body;
-      await supabase.from("spray_applications").insert({
-        equipment_id: equipment_id || "",
-        equipment_name: equipment_name || "",
-        product_id: product_id || "",
-        product_name: product_name || "",
-        amount_applied: Number(amount_applied ?? 0),
-        unit: unit || "gal",
-        field_id: field_id || "",
-        field_name: field_name || "",
-        application_date: application_date || new Date().toISOString(),
-        source: "manual",
-      });
-      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

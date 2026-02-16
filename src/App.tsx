@@ -11,7 +11,6 @@ import Operators from './pages/Operators';
 import Flags from './pages/Flags';
 import Alerts from './pages/Alerts';
 import SettingsPage from './pages/SettingsPage';
-import ChemicalInventory from './pages/ChemicalInventory';
 
 export default function App() {
   return (
@@ -28,7 +27,6 @@ export default function App() {
           <Route path="/operators" element={<Operators />} />
           <Route path="/flags" element={<Flags />} />
           <Route path="/alerts" element={<Alerts />} />
-          <Route path="/inventory" element={<ChemicalInventory />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>
