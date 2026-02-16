@@ -69,7 +69,46 @@ export const jdData = {
   machineOperationalHours: () => fetchJSON(`${apiBase}/data/machine_operational_hours`),
   implements: () => fetchJSON(`${apiBase}/data/implements`),
   equipmentImplementAttachments: () => fetchJSON(`${apiBase}/data/equipment_implement_attachments`),
+  chemicalInventory: () => fetchJSON(`${apiBase}/data/chemical_inventory`),
+  sprayApplications: () => fetchJSON(`${apiBase}/data/spray_applications`),
 };
+
+export async function updateChemicalInventory(data: {
+  id?: string;
+  product_id?: string;
+  product_name: string;
+  quantity: number;
+  unit?: string;
+  low_stock_threshold?: number;
+}) {
+  const res = await fetch(`${apiBase}/data/chemical_inventory`, {
+    method: 'POST',
+    headers: { ...headers } as HeadersInit,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+export async function logSprayApplication(data: {
+  equipment_id?: string;
+  equipment_name?: string;
+  product_id?: string;
+  product_name: string;
+  amount_applied: number;
+  unit?: string;
+  field_id?: string;
+  field_name?: string;
+  application_date?: string;
+}) {
+  const res = await fetch(`${apiBase}/data/spray_applications`, {
+    method: 'POST',
+    headers: { ...headers } as HeadersInit,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  return res.json();
+}
 
 export const jdProxy = {
   call: (endpoint: string) =>

@@ -375,7 +375,7 @@ Deno.serve(async (req: Request) => {
 
     if (path === "/sync/field-operations" || path === "/sync/field-operations/") {
       const { data: orgs } = await supabase.from("organizations").select("id");
-      const { data: fields } = await supabase.from("fields").select("id, org_id");
+      const { data: fields } = await supabase.from("fields").select("id, org_id, name");
       let totalSynced = 0;
 
       for (const org of orgs || []) {
@@ -403,6 +403,44 @@ Deno.serve(async (req: Request) => {
               synced_at: new Date().toISOString(),
             });
             totalSynced++;
+          }
+        }
+      }
+
+      const { data: sprayOps } = await supabase
+        .from("field_operations")
+        .select("id, field_id, operation_type, products, start_date, raw_data")
+        .or("operation_type.ilike.%spray%,operation_type.ilike.%application%");
+
+      for (const op of sprayOps || []) {
+        const products = (op.products as Array<{ name?: string; id?: string; amount?: number }>) || [];
+        const field = (fields || []).find((f) => f.id === op.field_id);
+        for (const p of products) {
+          if (p.name) {
+            const appDate = op.start_date || new Date().toISOString();
+            const { data: existing } = await supabase
+              .from("spray_applications")
+              .select("id")
+              .eq("field_id", op.field_id || "")
+              .eq("product_name", p.name)
+              .eq("application_date", appDate)
+              .eq("source", "john_deere")
+              .maybeSingle();
+            if (!existing) {
+              await supabase.from("spray_applications").insert({
+                equipment_id: "",
+                equipment_name: "",
+                product_id: String(p.id || ""),
+                product_name: p.name,
+                amount_applied: Number(p.amount || 0),
+                unit: "gal",
+                field_id: op.field_id || "",
+                field_name: field?.name || "",
+                application_date: appDate,
+                source: "john_deere",
+                metadata: op.raw_data || {},
+              });
+            }
           }
         }
       }
@@ -964,7 +1002,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (path.startsWith("/data/")) {
+    if (path.startsWith("/data/") && req.method === "GET") {
       const dataType = path.replace("/data/", "").replace("/", "");
       const validTables = [
         "organizations",
@@ -984,6 +1022,8 @@ Deno.serve(async (req: Request) => {
         "machine_operational_hours",
         "implements",
         "equipment_implement_attachments",
+        "chemical_inventory",
+        "spray_applications",
       ];
 
       if (!validTables.includes(dataType)) {
@@ -993,10 +1033,17 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      const orderCol =
+        dataType === "chemical_inventory"
+          ? "last_updated"
+          : dataType === "spray_applications"
+            ? "application_date"
+            : "synced_at";
+
       const { data, error } = await supabase
         .from(dataType)
         .select("*")
-        .order("synced_at", { ascending: false });
+        .order(orderCol, { ascending: false });
 
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
@@ -1006,6 +1053,80 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(JSON.stringify({ data, total: data?.length || 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (path === "/data/chemical_inventory" && req.method === "POST") {
+      const body = await req.json();
+      const { id, product_id, product_name, quantity, unit, low_stock_threshold } =
+        body;
+      const row = {
+        product_id: product_id || "",
+        product_name: product_name || "",
+        quantity: Number(quantity ?? 0),
+        unit: unit || "gal",
+        low_stock_threshold: Number(low_stock_threshold ?? 0),
+        last_updated: new Date().toISOString(),
+      };
+
+      if (id) {
+        await supabase.from("chemical_inventory").update(row).eq("id", id);
+      } else {
+        let existing = null;
+        if (product_id) {
+          const r = await supabase
+            .from("chemical_inventory")
+            .select("id")
+            .eq("product_id", product_id)
+            .maybeSingle();
+          existing = r.data;
+        }
+        if (!existing && product_name) {
+          const r = await supabase
+            .from("chemical_inventory")
+            .select("id")
+            .eq("product_name", product_name)
+            .maybeSingle();
+          existing = r.data;
+        }
+        if (existing && (existing as { id: string }).id) {
+          await supabase.from("chemical_inventory").update(row).eq("id", (existing as { id: string }).id);
+        } else {
+          await supabase.from("chemical_inventory").insert(row);
+        }
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (path === "/data/spray_applications" && req.method === "POST") {
+      const body = await req.json();
+      const {
+        equipment_id,
+        equipment_name,
+        product_id,
+        product_name,
+        amount_applied,
+        unit,
+        field_id,
+        field_name,
+        application_date,
+      } = body;
+      await supabase.from("spray_applications").insert({
+        equipment_id: equipment_id || "",
+        equipment_name: equipment_name || "",
+        product_id: product_id || "",
+        product_name: product_name || "",
+        amount_applied: Number(amount_applied ?? 0),
+        unit: unit || "gal",
+        field_id: field_id || "",
+        field_name: field_name || "",
+        application_date: application_date || new Date().toISOString(),
+        source: "manual",
+      });
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
