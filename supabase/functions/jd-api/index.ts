@@ -973,6 +973,8 @@ Deno.serve(async (req: Request) => {
         "machine_operational_hours",
         "implements",
         "equipment_implement_attachments",
+        "chemical_inventory",
+        "spray_applications",
       ];
 
       if (!validTables.includes(dataType)) {
@@ -982,10 +984,158 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Handle POST requests for chemical_inventory and spray_applications
+      if (req.method === "POST") {
+        if (dataType === "chemical_inventory") {
+          const body = await req.json();
+          const { id, product_id, product_name, quantity, unit, low_stock_threshold } = body;
+
+          // Try to find existing record by id, product_id, or product_name
+          let existing = null;
+          if (id) {
+            const { data: found } = await supabase
+              .from("chemical_inventory")
+              .select("*")
+              .eq("id", id)
+              .maybeSingle();
+            existing = found;
+          } else if (product_id) {
+            const { data: found } = await supabase
+              .from("chemical_inventory")
+              .select("*")
+              .eq("product_id", product_id)
+              .maybeSingle();
+            existing = found;
+          } else if (product_name) {
+            const { data: found } = await supabase
+              .from("chemical_inventory")
+              .select("*")
+              .eq("product_name", product_name)
+              .maybeSingle();
+            existing = found;
+          }
+
+          if (existing) {
+            // Update existing record
+            const { data, error } = await supabase
+              .from("chemical_inventory")
+              .update({
+                product_name,
+                quantity,
+                unit: unit || existing.unit,
+                low_stock_threshold: low_stock_threshold ?? existing.low_stock_threshold,
+                last_updated: new Date().toISOString(),
+              })
+              .eq("id", existing.id)
+              .select()
+              .single();
+
+            if (error) {
+              return new Response(JSON.stringify({ error: error.message }), {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            return new Response(JSON.stringify({ data }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          } else {
+            // Insert new record
+            const { data, error } = await supabase
+              .from("chemical_inventory")
+              .insert({
+                product_id: product_id || "",
+                product_name,
+                quantity,
+                unit: unit || "gal",
+                low_stock_threshold: low_stock_threshold || 0,
+              })
+              .select()
+              .single();
+
+            if (error) {
+              return new Response(JSON.stringify({ error: error.message }), {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            return new Response(JSON.stringify({ data }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
+        if (dataType === "spray_applications") {
+          const body = await req.json();
+          const {
+            equipment_id,
+            equipment_name,
+            product_id,
+            product_name,
+            amount_applied,
+            unit,
+            field_id,
+            field_name,
+            application_date,
+          } = body;
+
+          const { data, error } = await supabase
+            .from("spray_applications")
+            .insert({
+              equipment_id: equipment_id || "",
+              equipment_name: equipment_name || "",
+              product_id: product_id || "",
+              product_name,
+              amount_applied,
+              unit: unit || "gal",
+              field_id: field_id || "",
+              field_name: field_name || "",
+              application_date: application_date || new Date().toISOString(),
+              source: "manual",
+            })
+            .select()
+            .single();
+
+          if (error) {
+            return new Response(JSON.stringify({ error: error.message }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          return new Response(JSON.stringify({ data }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ error: "POST not supported for this table" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // GET requests - determine ordering based on table
+      let orderColumn = "created_at"; // default fallback
+      let orderAscending = false;
+      
+      if (dataType === "chemical_inventory") {
+        orderColumn = "last_updated";
+      } else if (dataType === "spray_applications") {
+        orderColumn = "application_date";
+      } else if (dataType === "sync_log") {
+        orderColumn = "created_at";
+      } else if (dataType.startsWith("machine_")) {
+        orderColumn = "timestamp";
+      } else if (["equipment", "fields", "operators", "products", "field_operations", "implements"].includes(dataType)) {
+        orderColumn = "synced_at";
+      }
+
       const { data, error } = await supabase
         .from(dataType)
         .select("*")
-        .order("synced_at", { ascending: false });
+        .order(orderColumn, { ascending: orderAscending });
 
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
