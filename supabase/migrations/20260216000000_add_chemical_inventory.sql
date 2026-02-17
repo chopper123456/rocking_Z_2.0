@@ -39,6 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_chemical_inventory_low_stock ON chemical_inventor
 
 ALTER TABLE chemical_inventory ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all for chemical_inventory" ON chemical_inventory;
 CREATE POLICY "Allow all for chemical_inventory"
   ON chemical_inventory FOR ALL
   USING (true)
@@ -66,6 +67,7 @@ CREATE INDEX IF NOT EXISTS idx_spray_applications_equipment ON spray_application
 
 ALTER TABLE spray_applications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all for spray_applications" ON spray_applications;
 CREATE POLICY "Allow all for spray_applications"
   ON spray_applications FOR ALL
   USING (true)
